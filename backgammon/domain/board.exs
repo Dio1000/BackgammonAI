@@ -3,36 +3,70 @@ Code.require_file("dice.exs", __DIR__)
 
 defmodule Board do
   def create() do
-    Matrix.new(10, 12, "N")
-    |> Matrix.set()
+    Matrix.new(10, 12, "-")
+    |> Matrix.set(0, 4, "W") |> Matrix.set(1, 4, "W") |> Matrix.set(2, 4, "W")
+    |> Matrix.set(0, 6, "W") |> Matrix.set(1, 6, "W") |> Matrix.set(2, 6, "W") |> Matrix.set(3, 6, "W") |> Matrix.set(4, 6, "W")
+    |> Matrix.set(0, 0, "B") |> Matrix.set(1, 0, "B") |> Matrix.set(2, 0, "B") |> Matrix.set(3, 0, "B") |> Matrix.set(4, 0, "B")
+    |> Matrix.set(0, 11, "B") |> Matrix.set(1, 11, "B")
+
+    |> Matrix.set(9, 4, "B") |> Matrix.set(8, 4, "B") |> Matrix.set(7, 4, "B")
+    |> Matrix.set(9, 6, "B") |> Matrix.set(8, 6, "B") |> Matrix.set(7, 6, "B") |> Matrix.set(6, 6, "B") |> Matrix.set(5, 6, "B")
+    |> Matrix.set(9, 0, "W") |> Matrix.set(8, 0, "W") |> Matrix.set(7, 0, "W") |> Matrix.set(6, 0, "W") |> Matrix.set(5, 0, "W")
+    |> Matrix.set(9, 11, "W") |> Matrix.set(8, 11, "W")
   end
 
   def show(board) do
-    IO.puts("\n============= BACKGAMMON BOARD ===============\n")
+    IO.puts("\n==============================================\n")
 
     formatted_board =
       board
-      |> Enum.map(&Enum.join(&1, " | "))
-      |> Enum.join("\n----------------------------------------------\n")
+      |> Enum.with_index()
+      |> Enum.map(fn {row, index} ->
+        row_string = format_row(row)
+
+        separator =
+          cond do
+            index == 4 -> "\n=============================================="
+            index < 9 -> "\n----------------------------------------------"
+            true -> ""
+          end
+
+        row_string <> separator
+      end)
+      |> Enum.join("\n")
+
+    IO.puts(formatted_board)
+    IO.puts("\n============= BACKGAMMON BOARD ===============\n")
+  end
+
+  def show_rotated(board) do
+    IO.puts("\n============= BACKGAMMON BOARD ===============\n")
+
+    rotated_board = board |> Enum.reverse()
+
+    formatted_board =
+      rotated_board
+      |> Enum.with_index()
+      |> Enum.map(fn {row, index} ->
+        row_string = format_row(row)
+
+        separator =
+          cond do
+            index == 4 -> "\n=============================================="
+            index < 9 -> "\n----------------------------------------------"
+            true -> ""
+          end
+
+        row_string <> separator
+      end)
+      |> Enum.join("\n")
 
     IO.puts(formatted_board)
     IO.puts("\n==============================================\n")
   end
 
-  def show_rotated(board) do
-    IO.puts("\n==============================================\n")
-
-    rotated_board =
-      board
-      |> Enum.reverse()
-      |> Enum.map(&Enum.reverse(&1))
-
-    formatted_board =
-      rotated_board
-      |> Enum.map(&Enum.join(&1, " | "))
-      |> Enum.join("\n----------------------------------------------\n")
-
-    IO.puts(formatted_board)
-    IO.puts("\n============= BACKGAMMON BOARD ===============\n")
+  defp format_row(row) do
+    {left, right} = Enum.split(row, div(length(row), 2))
+    Enum.join(left, " | ") <> " || " <> Enum.join(right, " | ")
   end
 end

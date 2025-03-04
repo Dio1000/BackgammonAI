@@ -11,9 +11,10 @@ defmodule GameController do
 
   defp play_against_human() do
     IO.write("\n")
+    filename = get_filename()
 
-    player = PlayerBuilder.default_build()
-    opponent = PlayerBuilder.default_build()
+    player = PlayerBuilder.default_build_white(Player.get_player1(filename))
+    opponent = PlayerBuilder.default_build_black(Player.get_player2(filename))
     GameRound.start_round(player, opponent)
 
     get_choice()
@@ -21,9 +22,10 @@ defmodule GameController do
 
   defp play_against_AI() do
     IO.write("\n")
+    filename = get_filename()
 
-    player = PlayerBuilder.default_build()
-    opponent = PlayerBuilder.default_build()
+    player = PlayerBuilder.default_build_white(Player.get_player1(filename))
+    opponent = PlayerBuilder.default_build_black(Player.get_player2(filename))
     GameRound.start_round(player, opponent)
 
     get_choice()
@@ -89,5 +91,9 @@ defmodule GameController do
   defp get_choice_fail() do
     IO.puts("Sorry for this primitive UI! Please choose a valid option (1 - 4)!")
     get_choice()
+  end
+
+  defp get_filename() do
+    _filename = "backgammon/files/player_data.txt"
   end
 end

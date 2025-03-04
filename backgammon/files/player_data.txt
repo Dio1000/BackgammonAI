@@ -1,2 +1,2 @@
-Player1: Darian
-Player2: Raul
+Player1: Name1
+Player2: Name2
