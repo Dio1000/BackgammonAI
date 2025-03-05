@@ -1,31 +1,40 @@
 defmodule Player do
+
+  # Defines the struture for the player and the attributes a player has.
   defstruct name: nil, status: nil, piece_colour: nil, position_score: 0,
   hit_pieces: 0, beared_pieces: 0
 
+  # Getter for the name of a player.
   def get_name(player) do
     Map.get(player |> Map.from_struct, :name)
   end
 
+  # Getter for the status of a player.
   def get_status(player) do
     Map.get(player |> Map.from_struct, :status)
   end
 
+  # Getter for the piece colour of a player.
   def get_piece_colour(player) do
     Map.get(player |> Map.from_struct, :piece_colour)
   end
 
+  # Getter for the position score of a player.
   def get_position_score(player) do
     Map.get(player |> Map.from_struct, :position_score)
   end
 
+  # Getter for the number of hit pieces of a player.
   def get_hit_pieces(player) do
     Map.get(player |> Map.from_struct, :hit_pieces)
   end
 
+  # Getter for the number of beared off pieces of a player.
   def get_beared_pieces(player) do
     Map.get(player |> Map.from_struct, :beared_pieces)
   end
 
+  # Gets the name of the first player (white pieces player) from the player data file.
   def get_player1(filename) do
     case File.read(filename) do
       {:ok, content} ->
@@ -37,6 +46,7 @@ defmodule Player do
     end
   end
 
+  # Gets the name of the second player (black pieces player) from the player data file.
   def get_player2(filename) do
     case File.read(filename) do
       {:ok, content} ->
@@ -48,6 +58,8 @@ defmodule Player do
     end
   end
 
+  # Shows the data of a player. This includes the name and the number of hit and beared off
+  # pieces in case they are not 0.
   def show_data(player) do
     IO.write(Player.get_name(player))
 

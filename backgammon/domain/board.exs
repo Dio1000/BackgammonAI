@@ -2,6 +2,8 @@ Code.require_file("../utils/matrix.exs", __DIR__)
 Code.require_file("dice.exs", __DIR__)
 
 defmodule Board do
+
+  # Creates and sets up the pieces for a new Backgammon board.
   def create() do
     Matrix.new(10, 12, "-")
     |> Matrix.set(0, 4, "W") |> Matrix.set(1, 4, "W") |> Matrix.set(2, 4, "W")
@@ -15,6 +17,7 @@ defmodule Board do
     |> Matrix.set(9, 11, "W") |> Matrix.set(8, 11, "W")
   end
 
+  # Displays the board in a formatted way.
   def show(board) do
     IO.puts("\n==============================================\n")
 
@@ -39,6 +42,7 @@ defmodule Board do
     IO.puts("\n============= BACKGAMMON BOARD ===============\n")
   end
 
+  # Displays the rotated board (180 degrees to the right) in a formatted way.
   def show_rotated(board) do
     IO.puts("\n============= BACKGAMMON BOARD ===============\n")
 
@@ -65,6 +69,8 @@ defmodule Board do
     IO.puts("\n==============================================\n")
   end
 
+  # Auxiliary function to format the middle of the rows and columns in order to
+  # differentiate between the 4 parts of a Backgammon board.
   defp format_row(row) do
     {left, right} = Enum.split(row, div(length(row), 2))
     Enum.join(left, " | ") <> " || " <> Enum.join(right, " | ")
