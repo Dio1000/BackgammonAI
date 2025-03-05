@@ -48,11 +48,11 @@ defmodule PlayerBuilder do
 
   # Sets the piece colour of a player to "White"
   def set_pieces_white(player),
-    do: %{player | piece_colour: "White"}
+    do: %{player | piece_colour: "W"}
 
   # Sets the piece colour of a player to "Black"
   def set_pieces_black(player),
-    do: %{player | piece_colour: "Black"}
+    do: %{player | piece_colour: "B"}
 
   # Sets the position score of a player.
   def set_position_score(player, position_score),
@@ -76,5 +76,5 @@ defmodule PlayerBuilder do
 
   # Sets the number of beared off pieces of a player to the default value 0.
   def set_beared_pieces(player),
-    do: %{player | beared_pieces: 1}
+    do: %{player | beared_pieces: 0}
 end

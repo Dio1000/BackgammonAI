@@ -19,6 +19,17 @@ defmodule Player do
     Map.get(player |> Map.from_struct, :piece_colour)
   end
 
+  # Getter for the opposite piece colour of a player.
+  def get_opposite_colour(player) do
+    colour = Map.get(player |> Map.from_struct, :piece_colour)
+    case colour do
+      "W" ->
+        "B"
+      "B" ->
+        "W"
+    end
+  end
+
   # Getter for the position score of a player.
   def get_position_score(player) do
     Map.get(player |> Map.from_struct, :position_score)
