@@ -28,4 +28,11 @@ defmodule Matrix do
       List.update_at(r, col, fn _ -> value end)
     end)
   end
+
+  # Rotates the matrix 180 degrees.
+  def rotate(matrix) do
+    matrix
+    |> Enum.reverse()
+    |> Enum.map(&Enum.reverse/1)
+  end
 end

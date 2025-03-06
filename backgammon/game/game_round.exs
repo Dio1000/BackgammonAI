@@ -30,13 +30,16 @@ defmodule GameRound do
   # to play their move.
   defp black_pieces_player_move(player, opponent, board) do
     Player.show_data(player)
-    Board.show_rotated(board)
+    board = Matrix.rotate(board)
+
+    Board.show(board)
     Player.show_data(opponent)
     IO.write("\n")
 
     dice_rolled = dice_roll(opponent)
     player_move(opponent, dice_rolled, board)
 
+    board = Matrix.rotate(board)
     white_pieces_player_move(player, opponent, board)
   end
 
@@ -54,12 +57,20 @@ defmodule GameRound do
     old_row = Validator.get_valid_integer("Row of the moved piece: ")
     old_col = Validator.get_valid_integer("Column of the moved piece: ")
 
+    if Validator.validate_interval(old_row, 0, 9) == false do
+        move_piece_fail(player, dice_number, board, "invalid_space")
+    end
+
+    if Validator.validate_interval(old_col, 0, 11) == false do
+        move_piece_fail(player, dice_number, board, "invalid_space")
+    end
+
     piece_colour = player |> Player.get_piece_colour() |> String.trim()
     opposite_colour = player |> Player.get_opposite_colour() |> String.trim()
 
     case board |> Matrix.get(old_row, old_col) do
       ^piece_colour ->
-        modify_board(old_row, old_col, dice_number)
+        modify_board(old_row, old_col, dice_number, board)
 
       ^opposite_colour ->
         move_piece_fail(player, dice_number, board, "wrong_colour")
@@ -69,10 +80,71 @@ defmodule GameRound do
     end
   end
 
-  # Modifies the board to remove the piece on the given position and move it
+  # Modifies the board to remove the piece on the given position and moves it
   # a given number of spaces based on its colour.
-  defp modify_board(old_row, old_col, dice_number) do
+  defp modify_board(old_row, old_col, dice_number, board) do
+    piece_colour = Matrix.get(board, old_row, old_col)
+    board = Matrix.set(board, old_row, old_col, "-")
 
+    new_col = find_new_col(piece_colour, old_row, old_col, dice_number)
+    new_row =
+      if old_row < 5 do
+        find_new_lower_row(piece_colour, 0, new_col, board)
+      else
+        find_new_upper_row(piece_colour, 9, new_col, board)
+      end
+
+    IO.inspect([new_row, new_col, Matrix.get(board, old_row, old_col)])
+    Matrix.set(board, new_row, new_col, piece_colour)
+  end
+
+  # Computes the column a piece would land based on a dice roll.
+  defp find_new_col(piece_colour, current_row, current_col, dice_number) do
+    cond do
+      current_row >= 5 and piece_colour == "W" -> abs(current_col - dice_number)
+      current_row >= 5 and piece_colour == "B" -> current_col + dice_number
+      current_row < 5 and piece_colour == "W" -> current_col + dice_number
+      current_row < 5 and piece_colour == "B" -> abs(current_col - dice_number)
+      true -> current_col
+    end
+  end
+
+  # Finds the lowest available row in the lower half of the board
+  defp find_new_lower_row(piece_colour, row, col, board) do
+    current_piece = Matrix.get(board, row, col)
+    opposite_piece = get_opposite_colour(current_piece)
+
+    cond do
+      current_piece == piece_colour -> find_new_lower_row(piece_colour, row + 1, col, board)
+      current_piece == opposite_piece -> row
+      current_piece == "-" -> row
+      true -> row
+    end
+  end
+
+  # Finds the highest available row in the upper half of the board
+  defp find_new_upper_row(piece_colour, row, col, board) do
+    current_piece = Matrix.get(board, row, col)
+    opposite_piece = get_opposite_colour(current_piece)
+
+    cond do
+      current_piece == piece_colour -> find_new_upper_row(piece_colour, row - 1, col, board)
+      current_piece == opposite_piece -> row
+      current_piece == "-" -> row
+      true -> row
+    end
+  end
+
+  # Auxiliary helper function to get the opposite of a colour.
+  defp get_opposite_colour(piece_colour) do
+    case piece_colour do
+      "W" ->
+        "B"
+      "B" ->
+        "W"
+      "-" ->
+        "-"
+    end
   end
 
   # Allows the AI to check for the best move and play it.
@@ -111,7 +183,6 @@ defmodule GameRound do
     end
   end
 
-
   # Auxiliary helper function to inform the user in the case they chose an invalid option.
   # Acts as a loop as the user is allowed to choose again after failing.
   defp get_choice_fail(player, dice_rolled, board) do
@@ -127,13 +198,20 @@ defmodule GameRound do
     case flag do
       "wrong_colour" ->
         if colour == "W" do
-          IO.puts("Wrong colour! Please choose a black piece!")
-        else
           IO.puts("Wrong colour! Please choose a white piece!")
+        else
+          IO.puts("Wrong colour! Please choose a black piece!")
         end
 
       "empty_space" ->
-        IO.puts("Invalid space! Please choose a #{colour} piece!")
+        if colour == "W" do
+          IO.puts("Wrong colour! Please choose a white piece!")
+        else
+          IO.puts("Wrong colour! Please choose a black piece!")
+        end
+
+      "invalid_space" ->
+        IO.puts("The matrix is 10x12, indexing starts at 0!")
     end
 
     move_piece(player, dice_number, board)
