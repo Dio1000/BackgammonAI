@@ -1,6 +1,7 @@
+Code.require_file("../utils/matrix.exs", __DIR__)
+Code.require_file("dice.exs", __DIR__)
+
 defmodule Board do
-  Code.require_file("../utils/matrix.exs", __DIR__)
-  Code.require_file("dice.exs", __DIR__)
 
   # Creates and sets up the pieces for a new Backgammon board.
   def create() do
@@ -16,6 +17,14 @@ defmodule Board do
     |> Matrix.set(4, 17, "B") |> Matrix.set(3, 17, "B") |> Matrix.set(2, 17, "B")
     |> Matrix.set(4, 19, "B") |> Matrix.set(3, 19, "B") |> Matrix.set(2, 19, "B") |> Matrix.set(1, 19, "B") |> Matrix.set(0, 19, "B")
     |> Matrix.set(4, 24, "W") |> Matrix.set(3, 24, "W")
+  end
+
+  # Returns the column at a given index.
+  def get_col(board, 5, _col), do: []
+
+  # The row should be given the value 0 by default.
+  def get_col(board, row, col) do
+    [Matrix.get(board, row, col)] ++ get_col(board, row + 1, col)
   end
 
   # Displays the board in the correct Backgammon format.

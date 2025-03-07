@@ -1,45 +1,59 @@
+Code.require_file("backgammon/domain/board.exs")
+
 defmodule GameValidator do
-  # Checks if a player with a given piece colour can move any pieces.
-  def can_move(piece_colour, board) do
-    Enum.any?(for row <- 0..9, col <- 0..11, do: can_move_piece(piece_colour, row, col, 1, board))
-  end
 
-  # Checks if a piece can move based on the given dice roll and board state.
-  def can_move_piece(piece_colour, row, col, dice_number, board) do
-    case Matrix.get(board, row, col) do
-      ^piece_colour -> check_valid_move(piece_colour, row, col, dice_number, board)
-      _ -> false
+  # Gets the index of the first element of a column that is not empty.
+  # Note: The default value for the index should be 4.
+  def get_top_index(_board, _max_height, col_data) do
+    col_data
+    |> Enum.with_index()
+    |> Enum.find_value(fn {cell, index} -> if cell != "-", do: index end)
+    |> case do
+      nil -> 4  # If the column is empty, return the bottom row
+      index -> index
     end
   end
 
-  # Auxiliary helper function to check if a move is valid.
-  defp check_valid_move(piece_colour, row, col, dice_number, board) do
-    new_col = col + dice_number
-    new_row = find_new_row(piece_colour, row, new_col, board)
-
-    if new_col >= 12, do: false, else: can_land?(piece_colour, new_row, new_col, board)
+  # Gets the number of occupied places of a column.
+  # Note: The default value for the index should be 4.
+  def get_occupied_places(board, index, col) do
+    cond do
+      Enum.at(col, index) in ["W", "B"] -> 1 + get_occupied_places(board, index - 1, col)
+      index == 0 -> 0
+      true -> get_occupied_places(board, index - 1, col)
+    end
   end
 
-  # Determines where the piece should land.
-  defp find_new_row(piece_colour, row, col, board) do
-    if row < 5 do
-      find_new_lower_row(piece_colour, 0, col, board)
+  # Checks if a piece can capture another piece.
+  def can_capture?(board, piece_colour, old_col, new_col) do
+    col = Board.get_col(board, 0, new_col)
+    occupied_places = get_occupied_places(board, 4, col)
+
+    place_colour = Enum.at(col, 0)
+
+    if place_colour == "-" do
+      false
     else
-      find_new_upper_row(piece_colour, 9, col, board)
+      case occupied_places do
+        1 -> piece_colour != place_colour
+        _ -> false
+      end
     end
   end
 
-  # Checks if the piece can land in the new position (not occupied by 2+ opposing pieces).
-  defp can_land?(piece_colour, row, col, board) do
-    case Matrix.get(board, row, col) do
-      "-" -> true
-      ^piece_colour -> true
-      _ -> count_pieces(board, row, col) < 2
-    end
-  end
+  # Checks if a piece can move to a specified new column.
+  def can_move?(board, piece_colour, _old_col, new_col) do
+    col = Board.get_col(board, 0, new_col)
+    occupied_places = get_occupied_places(board, 4, col)
 
-  # Counts how many pieces are at a given position.
-  defp count_pieces(board, row, col) do
-    Enum.count(Enum.filter(0..9, fn r -> Matrix.get(board, r, col) != "-" end))
+    if occupied_places == 5 do
+      false  # Column is full
+    else
+      top_index = get_top_index(board, 4, col)
+      place_colour = Enum.at(col, top_index)
+
+      # A piece can move if the destination is empty or has a friendly piece
+      place_colour == "-" or place_colour == piece_colour
+    end
   end
 end
