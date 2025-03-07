@@ -1,77 +1,59 @@
-Code.require_file("../utils/matrix.exs", __DIR__)
-Code.require_file("dice.exs", __DIR__)
-
 defmodule Board do
+  Code.require_file("../utils/matrix.exs", __DIR__)
+  Code.require_file("dice.exs", __DIR__)
 
   # Creates and sets up the pieces for a new Backgammon board.
   def create() do
-    Matrix.new(10, 12, "-")
-    |> Matrix.set(9, 4, "B") |> Matrix.set(8, 4, "B") |> Matrix.set(7, 4, "B")
-    |> Matrix.set(9, 6, "B") |> Matrix.set(8, 6, "B") |> Matrix.set(7, 6, "B") |> Matrix.set(6, 6, "B") |> Matrix.set(5, 6, "B")
-    |> Matrix.set(9, 0, "W") |> Matrix.set(8, 0, "W") |> Matrix.set(7, 0, "W") |> Matrix.set(6, 0, "W") |> Matrix.set(5, 0, "W")
-    |> Matrix.set(9, 11, "W") |> Matrix.set(8, 11, "W")
+    Matrix.new(5, 26, "-")
+    # Lower half of the board
+    |> Matrix.set(4, 1, "B") |> Matrix.set(3, 1, "B")
+    |> Matrix.set(4, 6, "W") |> Matrix.set(3, 6, "W") |> Matrix.set(2, 6, "W") |> Matrix.set(1, 6, "W") |> Matrix.set(0, 6, "W")
+    |> Matrix.set(4, 8, "W") |> Matrix.set(3, 8, "W") |> Matrix.set(2, 8, "W")
+    |> Matrix.set(4, 12, "B") |> Matrix.set(3, 12, "B") |> Matrix.set(2, 12, "B") |> Matrix.set(1, 12, "B") |> Matrix.set(0, 12, "B")
 
-    |> Matrix.set(0, 4, "W") |> Matrix.set(1, 4, "W") |> Matrix.set(2, 4, "W")
-    |> Matrix.set(0, 6, "W") |> Matrix.set(1, 6, "W") |> Matrix.set(2, 6, "W") |> Matrix.set(3, 6, "W") |> Matrix.set(4, 6, "W")
-    |> Matrix.set(0, 0, "B") |> Matrix.set(1, 0, "B") |> Matrix.set(2, 0, "B") |> Matrix.set(3, 0, "B") |> Matrix.set(4, 0, "B")
-    |> Matrix.set(0, 11, "B") |> Matrix.set(1, 11, "B")
+    # Upper half of the board
+    |> Matrix.set(4, 13, "W") |> Matrix.set(3, 13, "W") |> Matrix.set(2, 13, "W") |> Matrix.set(1, 13, "W") |> Matrix.set(0, 13, "W")
+    |> Matrix.set(4, 17, "B") |> Matrix.set(3, 17, "B") |> Matrix.set(2, 17, "B")
+    |> Matrix.set(4, 19, "B") |> Matrix.set(3, 19, "B") |> Matrix.set(2, 19, "B") |> Matrix.set(1, 19, "B") |> Matrix.set(0, 19, "B")
+    |> Matrix.set(4, 24, "W") |> Matrix.set(3, 24, "W")
   end
 
-  # Displays the board in a formatted way.
+  # Displays the board in the correct Backgammon format.
   def show(board) do
-    IO.puts("\n============= BACKGAMMON BOARD ===============\n")
+    IO.puts("\n============== BACKGAMMON BOARD ==============\n")
 
-    formatted_board =
-      board
+    top_half = board |> Enum.map(&Enum.slice(&1, 13..24))
+    bottom_half = board |> Enum.map(&Enum.slice(&1, 1..12))
+    print_column_numbers(13..24)
+
+    formatted_top =
+      top_half
       |> Enum.reverse()
-      |> Enum.with_index()
-      |> Enum.map(fn {row, index} ->
-        row_string = format_row(row)
-
-        separator =
-          cond do
-            index == 4 -> "\n=============================================="
-            index < 9 -> "\n----------------------------------------------"
-            true -> ""
-          end
-
-        row_string <> separator
-      end)
+      |> Enum.map(&format_row/1)
       |> Enum.join("\n")
 
-    IO.puts(formatted_board)
+    IO.puts(formatted_top)
+    IO.puts("==============================================")
+
+    formatted_bottom =
+      bottom_half
+      |> Enum.map(&Enum.reverse/1)
+      |> Enum.map(&format_row/1)
+      |> Enum.join("\n")
+
+    IO.puts(formatted_bottom)
+    print_column_numbers(12..1)
+
     IO.puts("\n==============================================\n")
   end
 
-  # Displays the rotated board (180 degrees to the right) in a formatted way.
-  def show_rotated(board) do
-    IO.puts("\n============= BACKGAMMON BOARD ===============\n")
-
-    rotated_board = board |> Enum.reverse()
-
-    formatted_board =
-      rotated_board
-      |> Enum.with_index()
-      |> Enum.map(fn {row, index} ->
-        row_string = format_row(row)
-
-        separator =
-          cond do
-            index == 4 -> "\n=============================================="
-            index < 9 -> "\n----------------------------------------------"
-            true -> ""
-          end
-
-        row_string <> separator
-      end)
-      |> Enum.join("\n")
-
-    IO.puts(formatted_board)
-    IO.puts("\n==============================================\n")
+  # Prints column numbers for a given range.
+  defp print_column_numbers(range) do
+    numbers = range |> Enum.map(&String.pad_leading(Integer.to_string(&1), 2, " "))
+    IO.puts(Enum.join(numbers, "  "))
   end
 
-  # Auxiliary function to format the middle of the rows and columns in order to
-  # differentiate between the 4 parts of a Backgammon board.
+  # Formats a row with vertical dividers between points.
   defp format_row(row) do
     {left, right} = Enum.split(row, div(length(row), 2))
     Enum.join(left, " | ") <> " || " <> Enum.join(right, " | ")
