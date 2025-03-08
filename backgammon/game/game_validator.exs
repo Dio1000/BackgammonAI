@@ -35,26 +35,28 @@ defmodule GameValidator do
   # Checks if a piece can move to the specified new column.
   def can_move?(board, piece_colour, _old_col, new_col) do
     col = Board.get_col(board, 0, new_col)
-    top_index = get_top_index(4, col)
 
-    if is_nil(top_index) do
-      false
+    top_occupied_index = get_highest_occupied_index(4, col)
+
+    if is_nil(top_occupied_index) do
+      true
     else
-      place_colour = Enum.at(col, top_index)
-      place_colour == "-" or place_colour == piece_colour
+      top_occupied_colour = Enum.at(col, top_occupied_index)
+      top_occupied_colour == piece_colour
     end
   end
 
   # Checks if a piece can capture another piece in the specified new column.
   def can_capture?(board, piece_colour, _old_col, new_col) do
     col = Board.get_col(board, 0, new_col)
-    top_index = get_top_index(4, col)
 
-    if is_nil(top_index) do
+    top_occupied_index = get_highest_occupied_index(4, col)
+
+    if is_nil(top_occupied_index) do
       false
     else
-      place_colour = Enum.at(col, top_index)
-      place_colour != "-" and place_colour != piece_colour
+      top_occupied_colour = Enum.at(col, top_occupied_index)
+      top_occupied_colour != piece_colour and get_occupied_places(board, 4, col) == 1
     end
   end
 end

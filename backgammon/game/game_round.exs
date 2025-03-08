@@ -65,21 +65,27 @@ defmodule GameRound do
         opposite_colour = player |> Player.get_opposite_colour() |> String.trim()
         new_col = find_new_col(piece_colour, old_row, old_col, dice_number)
 
-        valid_move =
-          GameValidator.can_capture?(board, piece_colour, old_col, new_col) or
-          GameValidator.can_move?(board, piece_colour, old_col, new_col)
+        if GameValidator.can_capture?(board, piece_colour, old_col, new_col) do
 
-        cond do
-          valid_move ->
+          captured_row = GameValidator.get_highest_occupied_index(4, Board.get_col(board, 0, new_col))
+          board = Matrix.set(board, captured_row, new_col, "-")
+
+          # TODO: Add logic to handle the captured piece.
+          modify_board(old_row, old_col, new_col, dice_number, board)
+        else
+          if GameValidator.can_move?(board, piece_colour, old_col, new_col) do
             modify_board(old_row, old_col, new_col, dice_number, board)
+          else
+            cond do
+              board |> Matrix.get(old_row, old_col) == opposite_colour ->
+                move_piece_fail(player, dice_number, board, "wrong_colour")
+                board
 
-          board |> Matrix.get(old_row, old_col) == opposite_colour ->
-            move_piece_fail(player, dice_number, board, "wrong_colour")
-            board
-
-          true ->
-            move_piece_fail(player, dice_number, board, "invalid_move")
-            board
+              true ->
+                move_piece_fail(player, dice_number, board, "invalid_move")
+                board
+            end
+          end
         end
       end
     end
@@ -96,12 +102,18 @@ defmodule GameRound do
       IO.puts("Invalid move: Column #{new_col} is full.")
       board
     else
-      updated_board =
-        board
-        |> Matrix.set(old_row, old_col, "-")
-        |> Matrix.set(new_row, new_col, piece_colour)
+      # Ensure the move is valid before proceeding
+      if GameValidator.can_move?(board, piece_colour, old_col, new_col) do
+        updated_board =
+          board
+          |> Matrix.set(old_row, old_col, "-")
+          |> Matrix.set(new_row, new_col, piece_colour)
 
-      updated_board
+        updated_board
+      else
+        IO.puts("Invalid move: Cannot stack on opposite-coloured pieces.")
+        board
+      end
     end
   end
 
