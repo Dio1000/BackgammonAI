@@ -25,7 +25,6 @@ defmodule Board do
 
   # Displays the board in the correct Backgammon format.
   def show(board) do
-    IO.inspect(board, label: "DEBUG: Board Structure")
     IO.puts("\n============== BACKGAMMON BOARD ==============\n")
 
     top_half = board |> Enum.map(&Enum.slice(&1, 13..24))

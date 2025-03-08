@@ -5,13 +5,11 @@ Code.require_file("backgammon/utils/validator.exs")
 Code.require_file("backgammon/game/game_validator.exs")
 
 defmodule GameRound do
-  # Starts a round of Backgammon, sets up the board, and allows the player with the white pieces to play the first move.
   def start_round(player, opponent) do
     board = Board.create()
     white_pieces_player_move(player, opponent, board)
   end
 
-  # Displays the board, player data, and allows the white pieces player to make a move.
   defp white_pieces_player_move(player, opponent, board) do
     Player.show_data(opponent)
     Board.show(board)
@@ -19,12 +17,10 @@ defmodule GameRound do
     IO.write("\n")
 
     dice_rolled = dice_roll(player)
-    new_board = player_move(player, dice_rolled, board)
-
-    black_pieces_player_move(player, opponent, new_board)
+    {new_board, updated_player} = player_move(player, dice_rolled, board)
+    black_pieces_player_move(updated_player, opponent, new_board)
   end
 
-  # Displays the board, player data, and allows the black pieces player to make a move.
   defp black_pieces_player_move(player, opponent, board) do
     Player.show_data(opponent)
     Board.show(board)
@@ -32,58 +28,89 @@ defmodule GameRound do
     IO.write("\n")
 
     dice_rolled = dice_roll(opponent)
-    new_board = player_move(opponent, dice_rolled, board)
-
-    white_pieces_player_move(player, opponent, new_board)
+    {new_board, updated_player} = player_move(opponent, dice_rolled, board)
+    white_pieces_player_move(player, updated_player, new_board)
   end
 
-  # Allows the player to make a move based on the numbers rolled on the dice.
   defp player_move(player, dice_rolled, board) do
     IO.puts("\nWhat would you like to do?")
     IO.puts("1. Move one checker #{Enum.at(dice_rolled, 0)} spaces and the other #{Enum.at(dice_rolled, 1)} spaces")
     IO.puts("2. Move one checker #{Enum.at(dice_rolled, 0) + Enum.at(dice_rolled, 1)} spaces")
 
-    get_choice(player, dice_rolled, board)
+    if player |> Player.get_hit_pieces > 0 do
+      move_hit_pieces(player, dice_rolled, board)
+    else
+      get_choice(player, dice_rolled, board)
+    end
   end
 
-  # Moves a piece on the board and returns the modified board.
-  defp move_piece(player, dice_number, board) do
-    old_col = Validator.get_valid_integer("Column number of the moved piece: ")
+  defp move_hit_pieces(player, dice_rolled, board) do
+    piece_colour = Player.get_piece_colour(player)
+    {start_col, direction} = if piece_colour == "W", do: {0, 1}, else: {25, -1}
+
+    # Attempt to move hit pieces using the dice rolls
+    {updated_board, updated_player} =
+      Enum.reduce(dice_rolled, {board, player}, fn dice_number, {current_board, current_player} ->
+        new_col = start_col + direction * dice_number
+
+        # Check if the new column is valid and the move is allowed
+        if GameValidator.can_move?(current_board, piece_colour, start_col, new_col) do
+          # Move the piece and update the board and player
+          {updated_board, updated_player} = move_piece(current_player, dice_number, current_board, start_col)
+          {updated_board, updated_player}
+        else
+          IO.puts("Cannot move to column #{new_col}. Skipping this move.")
+          {current_board, current_player}
+        end
+      end)
+
+    # If no moves were made, skip the turn
+    if updated_board == board do
+      IO.puts("No valid moves for hit pieces. Skipping turn.")
+      {updated_board, updated_player}
+    else
+      {updated_board, updated_player}
+    end
+  end
+
+  defp move_piece(player, dice_number, board, old_col \\ nil) do
+    old_col = if is_nil(old_col), do: Validator.get_valid_integer("Column number of the moved piece: "), else: old_col
 
     if Validator.validate_interval(old_col, 1, 24) == false do
       move_piece_fail(player, dice_number, board, "invalid_space")
-      board
+      {board, player}
     else
       old_row = GameValidator.get_highest_occupied_index(4, Board.get_col(board, 0, old_col))
 
       if is_nil(old_row) do
         IO.puts("Invalid move: No piece found in column #{old_col}.")
         move_piece_fail(player, dice_number, board, "empty_space")
-        board
+        {board, player}
       else
         piece_colour = player |> Player.get_piece_colour() |> String.trim()
         opposite_colour = player |> Player.get_opposite_colour() |> String.trim()
         new_col = find_new_col(piece_colour, old_row, old_col, dice_number)
 
         if GameValidator.can_capture?(board, piece_colour, old_col, new_col) do
-
           captured_row = GameValidator.get_highest_occupied_index(4, Board.get_col(board, 0, new_col))
           board = Matrix.set(board, captured_row, new_col, "-")
 
-          # TODO: Add logic to handle the captured piece.
-          modify_board(old_row, old_col, new_col, dice_number, board)
+          updated_player = player |> Player.increment_hit_pieces()
+          updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
+          {updated_board, updated_player}
         else
           if GameValidator.can_move?(board, piece_colour, old_col, new_col) do
-            modify_board(old_row, old_col, new_col, dice_number, board)
+            updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
+            {updated_board, player}
           else
             cond do
               board |> Matrix.get(old_row, old_col) == opposite_colour ->
                 move_piece_fail(player, dice_number, board, "wrong_colour")
-                board
+                {board, player}
 
               true ->
                 move_piece_fail(player, dice_number, board, "invalid_move")
-                board
+                {board, player}
             end
           end
         end
@@ -91,7 +118,6 @@ defmodule GameRound do
     end
   end
 
-  # Modifies the board to remove the piece from the old position and place it in the new position.
   defp modify_board(old_row, old_col, new_col, _dice_number, board) do
     piece_colour = Matrix.get(board, old_row, old_col)
 
@@ -102,7 +128,6 @@ defmodule GameRound do
       IO.puts("Invalid move: Column #{new_col} is full.")
       board
     else
-      # Ensure the move is valid before proceeding
       if GameValidator.can_move?(board, piece_colour, old_col, new_col) do
         updated_board =
           board
@@ -117,7 +142,6 @@ defmodule GameRound do
     end
   end
 
-  # Computes the new column based on the piece colour and dice roll.
   defp find_new_col(piece_colour, _current_row, current_col, dice_number) do
     cond do
       piece_colour == "W" -> current_col - dice_number
@@ -126,7 +150,6 @@ defmodule GameRound do
     end
   end
 
-  # Returns the opposite colour of the given piece colour.
   defp get_opposite_colour(piece_colour) do
     case piece_colour do
       "W" -> "B"
@@ -135,11 +158,9 @@ defmodule GameRound do
     end
   end
 
-  # Placeholder for AI move logic.
   defp ai_move(_player, _opponent, _board) do
   end
 
-  # Rolls the dice and returns the values.
   defp dice_roll(player) do
     dice1 = Dice.roll(6)
     dice2 = Dice.roll(6)
@@ -150,15 +171,14 @@ defmodule GameRound do
     [dice1, dice2]
   end
 
-  # Allows the user to choose between two move options.
   defp get_choice(player, dice_rolled, board) do
     choice = IO.gets("Choice: ") |> String.trim()
 
     case Integer.parse(choice) do
       {1, ""} ->
-        board = move_piece(player, Enum.at(dice_rolled, 0), board)
-        board = move_piece(player, Enum.at(dice_rolled, 1), board)
-        board
+        {updated_board, updated_player} = move_piece(player, Enum.at(dice_rolled, 0), board)
+        {final_board, final_player} = move_piece(updated_player, Enum.at(dice_rolled, 1), updated_board)
+        {final_board, final_player}
 
       {2, ""} ->
         move_piece(player, Enum.at(dice_rolled, 0) + Enum.at(dice_rolled, 1), board)
@@ -168,13 +188,11 @@ defmodule GameRound do
     end
   end
 
-  # Handles invalid choice input and prompts the user to choose again.
   defp get_choice_fail(player, dice_rolled, board) do
     IO.puts("Sorry for this primitive UI! Please choose a valid option (1 or 2)!")
     get_choice(player, dice_rolled, board)
   end
 
-  # Handles move failures and provides feedback to the user.
   defp move_piece_fail(player, dice_number, board, flag) do
     colour = Player.get_piece_colour(player)
 
@@ -192,6 +210,6 @@ defmodule GameRound do
         IO.puts("You can't move there!")
     end
 
-    move_piece(player, dice_number, board)
+    {board, player}
   end
 end

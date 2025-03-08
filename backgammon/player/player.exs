@@ -40,6 +40,24 @@ defmodule Player do
     Map.get(player |> Map.from_struct, :hit_pieces)
   end
 
+   # Increments the number of hit pieces for a player.
+   def increment_hit_pieces(player) do
+    if Map.has_key?(player, :hit_pieces) do
+      %{player | hit_pieces: player.hit_pieces + 1}
+    else
+      raise ArgumentError, "Player struct is missing the :hit_pieces key"
+    end
+  end
+
+  # Decrements the number of hit pieces of a player.
+  def decrement_hit_pieces(player) do
+    if Map.has_key?(player, :hit_pieces) do
+      %{player | hit_pieces: player.hit_pieces - 1}
+    else
+      raise ArgumentError, "Player struct is missing the :hit_pieces key"
+    end
+  end
+
   # Getter for the number of beared off pieces of a player.
   def get_beared_pieces(player) do
     Map.get(player |> Map.from_struct, :beared_pieces)
@@ -72,14 +90,14 @@ defmodule Player do
   # Shows the data of a player. This includes the name and the number of hit and beared off
   # pieces in case they are not 0.
   def show_data(player) do
-    IO.write(Player.get_name(player))
+    IO.write(Player.get_name(player) <> " (#{Player.get_piece_colour(player)})")
 
     if Player.get_hit_pieces(player) > 0 do
-      IO.write(" | " <> Integer.to_string(Player.get_hit_pieces(player)))
+      IO.write(" | Hit: " <> Integer.to_string(Player.get_hit_pieces(player)))
     end
 
     if Player.get_beared_pieces(player) > 0 do
-      IO.write(" | " <> Integer.to_string(Player.get_beared_pieces(player)))
+      IO.write(" | Beared off: " <> Integer.to_string(Player.get_beared_pieces(player)))
     end
 
     IO.write("\n")
