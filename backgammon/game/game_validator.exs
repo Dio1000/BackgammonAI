@@ -59,4 +59,29 @@ defmodule GameValidator do
       top_occupied_colour != piece_colour and get_occupied_places(board, 4, col) == 1
     end
   end
+
+  # Counts the number of "W" and "B" pieces on the board
+  def count_pieces(board) do
+    Enum.reduce(board, %{"W" => 0, "B" => 0}, fn row, acc ->
+      Enum.reduce(row, acc, fn cell, acc ->
+        case cell do
+          "W" -> Map.update!(acc, "W", &(&1 + 1))
+          "B" -> Map.update!(acc, "B", &(&1 + 1))
+          _ -> acc
+        end
+      end)
+    end)
+  end
+
+  # Calculates the number of hit pieces for a player
+  def calculate_hit_pieces(board, player) do
+    piece_colour = Player.get_piece_colour(player) |> String.trim()
+    max_pieces = 15  # Maximum number of pieces per player in Backgammon
+
+    # Count the number of pieces on the board for the player
+    piece_count = count_pieces(board)[piece_colour]
+
+    # Calculate hit pieces: max_pieces - pieces_on_board
+    max_pieces - piece_count
+  end
 end

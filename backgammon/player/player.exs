@@ -87,6 +87,11 @@ defmodule Player do
     end
   end
 
+  def get_opposite_player(player, players) do
+    opposite_colour = get_opposite_colour(player)
+    Enum.find(players, fn p -> get_piece_colour(p) == opposite_colour end)
+  end
+
   # Shows the data of a player. This includes the name and the number of hit and beared off
   # pieces in case they are not 0.
   def show_data(player) do
