@@ -11,7 +11,8 @@ defmodule GameRound do
     white_pieces_player_move(player, opponent, board)
   end
 
-  # Handles the white pieces player's move, displays the board and player data, rolls the dice, and updates the game state.
+  # Handles the white pieces player's move, displays the board and player data,
+  # rolls the dice, and updates the game state.
   defp white_pieces_player_move(player, opponent, board) do
     Player.show_data(opponent)
     Board.show(board)
@@ -24,7 +25,8 @@ defmodule GameRound do
     black_pieces_player_move(updated_player, updated_opponent, new_board)
   end
 
-  # Handles the black pieces player's move, displays the board and player data, rolls the dice, and updates the game state.
+  # Handles the black pieces player's move, displays the board and player data,
+  # rolls the dice, and updates the game state.
   defp black_pieces_player_move(player, opponent, board) do
     Player.show_data(opponent)
     Board.show(board)
@@ -39,6 +41,12 @@ defmodule GameRound do
 
   # Prompts the player to choose a move based on the dice rolls and handles the move logic.
   defp player_move(player, dice_rolled, board) do
+    piece_colour = Player.get_piece_colour(player)
+
+    if GameValidator.all_pieces_in_homebase?(board, piece_colour) do
+      IO.puts("All your pieces are in the homebase. You can start bearing off pieces!")
+    end
+
     IO.puts("\nWhat would you like to do?")
     IO.puts("1. Move one checker #{Enum.at(dice_rolled, 0)} spaces and the other #{Enum.at(dice_rolled, 1)} spaces")
     IO.puts("2. Move one checker #{Enum.at(dice_rolled, 0) + Enum.at(dice_rolled, 1)} spaces")
@@ -53,10 +61,15 @@ defmodule GameRound do
   # Updates the number of hit pieces for both players based on the current board state.
   defp update_hit_pieces(board, player, opponent) do
     piece_counts = GameValidator.count_pieces(board)
-    player_hit_pieces = 15 - piece_counts[Player.get_piece_colour(player)]
-    opponent_hit_pieces = 15 - piece_counts[Player.get_piece_colour(opponent)]
+    player_colour = Player.get_piece_colour(player)
+    opponent_colour = Player.get_piece_colour(opponent)
+
+    player_hit_pieces = 15 - piece_counts[player_colour] - Player.get_beared_pieces(player)
     updated_player = %{player | hit_pieces: player_hit_pieces}
+
+    opponent_hit_pieces = 15 - piece_counts[opponent_colour] - Player.get_beared_pieces(opponent)
     updated_opponent = %{opponent | hit_pieces: opponent_hit_pieces}
+
     {updated_player, updated_opponent}
   end
 
@@ -114,7 +127,7 @@ defmodule GameRound do
     end
   end
 
-  # Moves a piece on the board based on the dice roll and updates the player state.
+  #
   defp move_piece(player, dice_number, board, old_col \\ nil) do
     old_col = if is_nil(old_col), do: Validator.get_valid_integer("Column number of the moved piece: "), else: old_col
 
@@ -132,25 +145,37 @@ defmodule GameRound do
         opposite_colour = player |> Player.get_opposite_colour() |> String.trim()
         new_col = find_new_col(piece_colour, old_row, old_col, dice_number)
 
-        if GameValidator.can_capture?(board, piece_colour, old_col, new_col) do
-          captured_row = GameValidator.get_highest_occupied_index(4, Board.get_col(board, 0, new_col))
-          board = Matrix.set(board, captured_row, new_col, "-")
-          updated_player = player |> Player.increment_hit_pieces()
-          updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
-          {updated_board, updated_player}
-        else
-          if GameValidator.can_move?(board, piece_colour, old_col, new_col) do
-            updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
-            {updated_board, player}
+        if GameValidator.all_pieces_in_homebase?(board, piece_colour) do
+          if GameValidator.is_valid_bearing_off_move?(piece_colour, old_col, dice_number) do
+            IO.puts("Bearing off a piece from column #{old_col}!")
+            updated_board = Matrix.set(board, old_row, old_col, "-")
+            updated_player = %{player | beared_pieces: player.beared_pieces + 1}
+            {updated_board, updated_player}
           else
-            cond do
-              board |> Matrix.get(old_row, old_col) == opposite_colour ->
-                move_piece_fail(player, dice_number, board, "wrong_colour")
-                {board, player}
+            IO.puts("Invalid bearing-off move: You must move exactly to the bearing-off column.")
+            {board, player}
+          end
+        else
+          if GameValidator.can_capture?(board, piece_colour, old_col, new_col) do
+            captured_row = GameValidator.get_highest_occupied_index(4, Board.get_col(board, 0, new_col))
+            board = Matrix.set(board, captured_row, new_col, "-")
+            updated_player = player |> Player.increment_hit_pieces()
+            updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
+            {updated_board, updated_player}
+          else
+            if GameValidator.can_move?(board, piece_colour, old_col, new_col) do
+              updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
+              {updated_board, player}
+            else
+              cond do
+                board |> Matrix.get(old_row, old_col) == opposite_colour ->
+                  move_piece_fail(player, dice_number, board, "wrong_colour")
+                  {board, player}
 
-              true ->
-                move_piece_fail(player, dice_number, board, "invalid_move")
-                {board, player}
+                true ->
+                  move_piece_fail(player, dice_number, board, "invalid_move")
+                  {board, player}
+              end
             end
           end
         end

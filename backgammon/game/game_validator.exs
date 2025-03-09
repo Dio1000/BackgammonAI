@@ -60,10 +60,9 @@ defmodule GameValidator do
     end
   end
 
+  # Checks if a hit piece can reenter the board.
   def can_reenter?(board, piece_colour, new_col) do
     col = Board.get_col(board, 0, new_col)
-
-    # Check if the column is open or contains the player's own pieces
     top_occupied_index = get_highest_occupied_index(4, col)
 
     if is_nil(top_occupied_index) do
@@ -72,6 +71,69 @@ defmodule GameValidator do
       top_occupied_colour = Enum.at(col, top_occupied_index)
       top_occupied_colour == piece_colour
     end
+  end
+
+  # Checks if any piece of the given colour can bear off using either of the two dice rolls.
+  def can_bear_off(board, piece_colour, dice_rolls) do
+    if all_pieces_in_homebase?(board, piece_colour) do
+      Enum.any?(dice_rolls, fn dice_roll ->
+        can_bear_off_with_dice?(board, piece_colour, dice_roll)
+      end)
+    else
+      false
+    end
+  end
+
+  # Checks if a move is a valid bearing-off move
+  def is_valid_bearing_off_move?(piece_colour, old_col, dice_number) do
+    case piece_colour do
+      "W" -> old_col - dice_number == 0
+      "B" -> old_col + dice_number == 25
+      _ -> false
+    end
+  end
+
+  # Checks if any piece of the given colour can bear off using a specific dice roll.
+  def can_bear_off_with_dice?(board, piece_colour, dice_roll) do
+    homebase_range = if piece_colour == "W", do: 1..6, else: 19..24
+
+    Enum.any?(homebase_range, fn col ->
+      col_data = Board.get_col(board, 0, col)
+      if Enum.any?(col_data, fn cell -> cell == piece_colour end) do
+        target_col = if piece_colour == "W", do: col - dice_roll, else: col + dice_roll
+
+        case piece_colour do
+          "W" -> target_col == 0
+          "B" -> target_col == 25
+          _ -> false
+        end
+      else
+        false
+      end
+    end)
+  end
+
+  # Checks if all pieces of a given colour are in their homebase
+  def all_pieces_in_homebase?(board, piece_colour) do
+    homebase_range = if piece_colour == "W", do: 1..6, else: 19..24
+
+    homebase_pieces = Enum.reduce(homebase_range, 0, fn col, acc ->
+      col_data = Board.get_col(board, 0, col)
+      acc + Enum.count(col_data, fn cell -> cell == piece_colour end)
+    end)
+
+    total_pieces = GameValidator.count_pieces(board)[piece_colour]
+    homebase_pieces == total_pieces
+  end
+
+  # Checks if a piece of a given colour is in its homebase.
+  def is_in_homebase(board, piece_colour) do
+    homebase_range = if piece_colour == "W", do: 1..6, else: 19..24
+
+    Enum.any?(homebase_range, fn col ->
+      col_data = Board.get_col(board, 0, col)
+      Enum.any?(col_data, fn cell -> cell == piece_colour end)
+    end)
   end
 
   # Counts the number of "W" and "B" pieces on the board
