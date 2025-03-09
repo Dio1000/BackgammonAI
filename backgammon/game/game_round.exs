@@ -5,15 +5,13 @@ Code.require_file("backgammon/utils/validator.exs")
 Code.require_file("backgammon/game/game_validator.exs")
 
 defmodule GameRound do
-  # This module handles the logic for a single round of Backgammon, including player moves, dice rolls, and board updates.
-
   # Starts a new round of Backgammon, initializes the board, and begins the game with the white pieces player.
   def start_round(player, opponent) do
     board = Board.create()
     white_pieces_player_move(player, opponent, board)
   end
 
-  # Handles the white pieces player's move, displays the board and player data, and rolls the dice.
+  # Handles the white pieces player's move, displays the board and player data, rolls the dice, and updates the game state.
   defp white_pieces_player_move(player, opponent, board) do
     Player.show_data(opponent)
     Board.show(board)
@@ -21,11 +19,12 @@ defmodule GameRound do
     IO.write("\n")
 
     dice_rolled = dice_roll(player)
-    {new_board, updated_player, updated_opponent} = player_move(player, dice_rolled, board, opponent)
+    {new_board, updated_player} = player_move(player, dice_rolled, board)
+    {updated_player, updated_opponent} = update_hit_pieces(new_board, updated_player, opponent)
     black_pieces_player_move(updated_player, updated_opponent, new_board)
   end
 
-  # Handles the black pieces player's move, displays the board and player data, and rolls the dice.
+  # Handles the black pieces player's move, displays the board and player data, rolls the dice, and updates the game state.
   defp black_pieces_player_move(player, opponent, board) do
     Player.show_data(opponent)
     Board.show(board)
@@ -33,59 +32,101 @@ defmodule GameRound do
     IO.write("\n")
 
     dice_rolled = dice_roll(opponent)
-    {new_board, updated_player, updated_opponent} = player_move(opponent, dice_rolled, board, player)
-    white_pieces_player_move(updated_player, updated_opponent, new_board)
+    {new_board, updated_player} = player_move(opponent, dice_rolled, board)
+    {updated_player, updated_opponent} = update_hit_pieces(new_board, updated_player, player)
+    white_pieces_player_move(updated_opponent, updated_player, new_board)
   end
 
   # Prompts the player to choose a move based on the dice rolls and handles the move logic.
-  defp player_move(player, dice_rolled, board, opponent) do
+  defp player_move(player, dice_rolled, board) do
     IO.puts("\nWhat would you like to do?")
     IO.puts("1. Move one checker #{Enum.at(dice_rolled, 0)} spaces and the other #{Enum.at(dice_rolled, 1)} spaces")
     IO.puts("2. Move one checker #{Enum.at(dice_rolled, 0) + Enum.at(dice_rolled, 1)} spaces")
 
     if player |> Player.get_hit_pieces > 0 do
-      move_hit_pieces(player, dice_rolled, board, opponent)
+      move_hit_pieces(player, dice_rolled, board)
     else
-      get_choice(player, dice_rolled, board, opponent)
+      get_choice(player, dice_rolled, board)
+    end
+  end
+
+  # Updates the number of hit pieces for both players based on the current board state.
+  defp update_hit_pieces(board, player, opponent) do
+    piece_counts = GameValidator.count_pieces(board)
+    player_hit_pieces = 15 - piece_counts[Player.get_piece_colour(player)]
+    opponent_hit_pieces = 15 - piece_counts[Player.get_piece_colour(opponent)]
+    updated_player = %{player | hit_pieces: player_hit_pieces}
+    updated_opponent = %{opponent | hit_pieces: opponent_hit_pieces}
+    {updated_player, updated_opponent}
+  end
+
+  # Places a hit piece on the board at the specified column.
+  defp place_hit_piece(board, piece_colour, new_col) do
+    col_data = Board.get_col(board, 0, new_col)
+    new_row = GameValidator.get_first_empty_from_bottom(4, col_data)
+
+    if is_nil(new_row) do
+      IO.puts("Invalid move: Column #{new_col} is full.")
+      board
+    else
+      Matrix.set(board, new_row, new_col, piece_colour)
     end
   end
 
   # Handles the movement of hit pieces for a player based on the dice rolls.
-  defp move_hit_pieces(player, dice_rolled, board, opponent) do
+  defp move_hit_pieces(player, dice_rolled, board) do
     piece_colour = Player.get_piece_colour(player)
     {start_col, direction} = if piece_colour == "W", do: {0, 1}, else: {25, -1}
 
-    {updated_board, updated_player, updated_opponent} =
-      Enum.reduce(dice_rolled, {board, player, opponent}, fn dice_number, {current_board, current_player, current_opponent} ->
+    valid_dice =
+      Enum.filter(dice_rolled, fn dice_number ->
         new_col = start_col + direction * dice_number
-
-        if GameValidator.can_move?(current_board, piece_colour, start_col, new_col) do
-          move_piece(current_player, dice_number, current_board, current_opponent, start_col)
-        else
-          {current_board, current_player, current_opponent}
-        end
+        GameValidator.can_reenter?(board, piece_colour, new_col)
       end)
 
-    if updated_board == board do
-      {updated_board, updated_player, updated_opponent}
+    if Enum.empty?(valid_dice) do
+      IO.puts("No valid moves for hit pieces. Skipping turn.")
+      {board, player}
     else
-      {updated_board, updated_player, updated_opponent}
+      IO.puts("Choose a dice roll to re-enter your hit piece:")
+      Enum.each(valid_dice, fn dice_number ->
+        IO.puts("#{dice_number} -> Column #{start_col + direction * dice_number}")
+      end)
+
+      choice = IO.gets("Choice: ") |> String.trim() |> Integer.parse()
+
+      case choice do
+        {dice_number, ""} ->
+          if dice_number in valid_dice do
+            new_col = start_col + direction * dice_number
+            updated_board = place_hit_piece(board, piece_colour, new_col)
+            updated_player = %{player | hit_pieces: player.hit_pieces - 1}
+            {updated_board, updated_player}
+          else
+            IO.puts("Invalid choice. Skipping turn.")
+            {board, player}
+          end
+
+        _ ->
+          IO.puts("Invalid input. Skipping turn.")
+          {board, player}
+      end
     end
   end
 
-  # Moves a piece on the board based on the dice roll and updates the player and opponent states.
-  defp move_piece(player, dice_number, board, opponent, old_col \\ nil) do
+  # Moves a piece on the board based on the dice roll and updates the player state.
+  defp move_piece(player, dice_number, board, old_col \\ nil) do
     old_col = if is_nil(old_col), do: Validator.get_valid_integer("Column number of the moved piece: "), else: old_col
 
     if Validator.validate_interval(old_col, 1, 24) == false do
       move_piece_fail(player, dice_number, board, "invalid_space")
-      {board, player, opponent}
+      {board, player}
     else
       old_row = GameValidator.get_highest_occupied_index(4, Board.get_col(board, 0, old_col))
 
       if is_nil(old_row) do
         move_piece_fail(player, dice_number, board, "empty_space")
-        {board, player, opponent}
+        {board, player}
       else
         piece_colour = player |> Player.get_piece_colour() |> String.trim()
         opposite_colour = player |> Player.get_opposite_colour() |> String.trim()
@@ -94,25 +135,22 @@ defmodule GameRound do
         if GameValidator.can_capture?(board, piece_colour, old_col, new_col) do
           captured_row = GameValidator.get_highest_occupied_index(4, Board.get_col(board, 0, new_col))
           board = Matrix.set(board, captured_row, new_col, "-")
-
-          opponent_hit_pieces = GameValidator.calculate_hit_pieces(board, opponent)
-          updated_opponent = %{opponent | hit_pieces: opponent_hit_pieces}
-
+          updated_player = player |> Player.increment_hit_pieces()
           updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
-          {updated_board, player, updated_opponent}
+          {updated_board, updated_player}
         else
           if GameValidator.can_move?(board, piece_colour, old_col, new_col) do
             updated_board = modify_board(old_row, old_col, new_col, dice_number, board)
-            {updated_board, player, opponent}
+            {updated_board, player}
           else
             cond do
               board |> Matrix.get(old_row, old_col) == opposite_colour ->
                 move_piece_fail(player, dice_number, board, "wrong_colour")
-                {board, player, opponent}
+                {board, player}
 
               true ->
                 move_piece_fail(player, dice_number, board, "invalid_move")
-                {board, player, opponent}
+                {board, player}
             end
           end
         end
@@ -123,7 +161,6 @@ defmodule GameRound do
   # Modifies the board by moving a piece from the old position to the new position.
   defp modify_board(old_row, old_col, new_col, _dice_number, board) do
     piece_colour = Matrix.get(board, old_row, old_col)
-
     col_data = Board.get_col(board, 0, new_col)
     new_row = GameValidator.get_first_empty_from_bottom(4, col_data)
 
@@ -162,31 +199,33 @@ defmodule GameRound do
   defp dice_roll(player) do
     dice1 = Dice.roll(6)
     dice2 = Dice.roll(6)
+    IO.puts("#{Player.get_name(player)} rolled:")
+    IO.puts("Dice 1: #{dice1}\nDice 2: #{dice2}")
     [dice1, dice2]
   end
 
   # Prompts the player to choose a move option and handles the choice.
-  defp get_choice(player, dice_rolled, board, opponent) do
+  defp get_choice(player, dice_rolled, board) do
     choice = IO.gets("Choice: ") |> String.trim()
 
     case Integer.parse(choice) do
       {1, ""} ->
-        {updated_board, updated_player, updated_opponent} = move_piece(player, Enum.at(dice_rolled, 0), board, opponent)
-        {final_board, final_player, final_opponent} = move_piece(updated_player, Enum.at(dice_rolled, 1), updated_board, updated_opponent)
-        {final_board, final_player, final_opponent}
+        {updated_board, updated_player} = move_piece(player, Enum.at(dice_rolled, 0), board)
+        {final_board, final_player} = move_piece(updated_player, Enum.at(dice_rolled, 1), updated_board)
+        {final_board, final_player}
 
       {2, ""} ->
-        move_piece(player, Enum.at(dice_rolled, 0) + Enum.at(dice_rolled, 1), board, opponent)
+        move_piece(player, Enum.at(dice_rolled, 0) + Enum.at(dice_rolled, 1), board)
 
       _ ->
-        get_choice_fail(player, dice_rolled, board, opponent)
+        get_choice_fail(player, dice_rolled, board)
     end
   end
 
   # Handles invalid choice input and prompts the player to choose again.
-  defp get_choice_fail(player, dice_rolled, board, opponent) do
+  defp get_choice_fail(player, dice_rolled, board) do
     IO.puts("Sorry for this primitive UI! Please choose a valid option (1 or 2)!")
-    get_choice(player, dice_rolled, board, opponent)
+    get_choice(player, dice_rolled, board)
   end
 
   # Handles move failures and provides feedback to the player.

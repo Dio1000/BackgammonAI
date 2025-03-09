@@ -60,6 +60,20 @@ defmodule GameValidator do
     end
   end
 
+  def can_reenter?(board, piece_colour, new_col) do
+    col = Board.get_col(board, 0, new_col)
+
+    # Check if the column is open or contains the player's own pieces
+    top_occupied_index = get_highest_occupied_index(4, col)
+
+    if is_nil(top_occupied_index) do
+      false
+    else
+      top_occupied_colour = Enum.at(col, top_occupied_index)
+      top_occupied_colour == piece_colour
+    end
+  end
+
   # Counts the number of "W" and "B" pieces on the board
   def count_pieces(board) do
     Enum.reduce(board, %{"W" => 0, "B" => 0}, fn row, acc ->
@@ -76,12 +90,9 @@ defmodule GameValidator do
   # Calculates the number of hit pieces for a player
   def calculate_hit_pieces(board, player) do
     piece_colour = Player.get_piece_colour(player) |> String.trim()
-    max_pieces = 15  # Maximum number of pieces per player in Backgammon
+    max_pieces = 15
 
-    # Count the number of pieces on the board for the player
     piece_count = count_pieces(board)[piece_colour]
-
-    # Calculate hit pieces: max_pieces - pieces_on_board
     max_pieces - piece_count
   end
 end
