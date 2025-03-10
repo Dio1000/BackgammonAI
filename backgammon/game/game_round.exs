@@ -11,6 +11,12 @@ defmodule GameRound do
     white_pieces_player_move(player, opponent, board)
   end
 
+  # Starts a new round of Backgammon, initializez the board, and begins the game with the white pieces player
+  # against an AI that plays the best moves.
+  def start_ai_round(player, opponent) do
+    board = Board.create()
+  end
+
   # Handles the white pieces player's move, displays the board and player data,
   # rolls the dice, and updates the game state.
   defp white_pieces_player_move(player, opponent, board) do
