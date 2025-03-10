@@ -53,7 +53,6 @@ defmodule GameEngineUtils do
   def compute_pip_count_score(player, board) do
     piece_colour = Player.get_piece_colour(player)
 
-    # Calculate pip count
     pip_count = Enum.reduce(1..24, 0, fn col, acc ->
       col_data = Board.get_col(board, 0, col)
       pieces = Enum.count(col_data, fn cell -> cell == piece_colour end)

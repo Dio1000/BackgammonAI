@@ -1,3 +1,5 @@
+Code.require_file("backgammon/domain/board.exs")
+
 defmodule BoardUtils do
 
   # Creates a copy of a given board.

@@ -15,6 +15,7 @@ defmodule GameRound do
   # against an AI that plays the best moves.
   def start_ai_round(player, opponent) do
     board = Board.create()
+
   end
 
   # Handles the white pieces player's move, displays the board and player data,

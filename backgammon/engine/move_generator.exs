@@ -1,15 +1,14 @@
+Code.require_file("backgammon/engine/game_state.exs")
+Code.require_file("backgammon/player/player.exs")
+Code.require_file("backgammon/game/game_validator.exs")
+
 defmodule MoveGenerator do
 
-  defstruct [
-    :board,
-    :player,
-    :opponent,
-    :dice_roll
-  ]
+  defstruct board: nil, player: nil, opponent: nil, dice_roll: nil
 
   # Creates a new GameState struct.
   def new(board, player, opponent, dice_roll) do
-    %GameState{
+    %MoveGenerator{
       board: board,
       player: player,
       opponent: opponent,
@@ -17,17 +16,21 @@ defmodule MoveGenerator do
     }
   end
 
+  # Generates all the moves the player struct inside a given game state can play.
+  # It returns a list of tuples containing the type of move, the old column and the
+  # new column of a checker.
   def generate_moves(game_state) do
-    player = game_state.player
-    board = game_state.board
-    dice_roll = game_state.dice_roll
-    piece_colour = Player.get_piece_colour(player)
-
-    if Player.get_hit_pieces(player) > 0 do
-      generate_reenter_moves(player, board, dice_roll)
+    dice_roll = if Enum.at(game_state.dice_roll, 0) == Enum.at(game_state.dice_roll, 1) do
+      List.duplicate(Enum.at(game_state.dice_roll, 0), 4)
     else
-      regular_moves = generate_regular_moves(player, board, dice_roll)
-      bearing_off_moves = generate_bearing_off_moves(player, board, dice_roll)
+      game_state.dice_roll
+    end
+
+    if Player.get_hit_pieces(game_state.player) > 0 do
+      generate_reenter_moves(game_state.player, game_state.board, dice_roll)
+    else
+      regular_moves = generate_regular_moves(game_state.player, game_state.board, dice_roll)
+      bearing_off_moves = generate_bearing_off_moves(game_state.player, game_state.board, dice_roll)
 
       regular_moves ++ bearing_off_moves
     end
@@ -41,7 +44,7 @@ defmodule MoveGenerator do
     Enum.flat_map(dice_roll, fn dice_number ->
       new_col = start_col + direction * dice_number
       if GameValidator.can_reenter?(board, piece_colour, new_col) do
-        [{:reenter, dice_number, new_col}]
+        [{dice_number, new_col}]
       else
         []
       end
@@ -54,11 +57,11 @@ defmodule MoveGenerator do
 
     Enum.flat_map(1..24, fn col ->
       col_data = Board.get_col(board, 0, col)
-      if Enum.any?(col_data, fn cell -> cell == piece_colour end) do
+      if Enum.any?(col_data, &(&1 == piece_colour)) do
         Enum.flat_map(dice_roll, fn dice_number ->
           new_col = find_new_col(piece_colour, col, dice_number)
           if GameValidator.can_move?(board, piece_colour, col, new_col) do
-            [{:move, col, new_col}]
+            [{col, new_col}]
           else
             []
           end
@@ -77,9 +80,9 @@ defmodule MoveGenerator do
       Enum.flat_map(dice_roll, fn dice_number ->
         Enum.flat_map(1..24, fn col ->
           col_data = Board.get_col(board, 0, col)
-          if Enum.any?(col_data, fn cell -> cell == piece_colour end) do
+          if Enum.any?(col_data, &(&1 == piece_colour)) do
             if GameValidator.is_valid_bearing_off_move?(piece_colour, col, dice_number) do
-              [{:bear_off, col}]
+              [{0, col}]
             else
               []
             end
