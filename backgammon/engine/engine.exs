@@ -5,6 +5,24 @@ Code.require_file("backgammon/engine/engine_utils.exs")
 Code.require_file("backgammon/engine/move_generator.exs")
 
 defmodule GameEngine do
+  @max_depth 3
+  @positive_infinity 1_000_000
+  @negative_infinity -1_000_000
+
+  # Chooses and returns the best move that can be played in a given Game State.
+  def choose_best_move(game_state) do
+
+    hit_move = find_hit_move(game_state)
+    if hit_move, do: hit_move
+
+    save_move = find_save_move(game_state)
+    if save_move, do: save_move
+
+    bear_off_move = find_bear_off_move(game_state)
+    if bear_off_move, do: bear_off_move
+
+    find_best_move_with_alphabeta(game_state)
+  end
 
   # Calculates the score of a given position in a game of Backgammon for a given
   # piece colour.
@@ -16,14 +34,55 @@ defmodule GameEngine do
     hit_and_beared_score = GameEngineUtils.compute_hit_and_beared_off_pieces_score(player, board)
 
     total_score = homebase_score + vulnerable_score + blocking_score + pip_score + hit_and_beared_score
+    total_score
   end
 
-  @max_depth 3
-  @positive_infinity 1_000_000
-  @negative_infinity -1_000_000
+  # Finds a move that hits an opponent's piece.
+  defp find_hit_move(game_state) do
+    valid_moves = MoveGenerator.generate_moves(game_state)
 
-  # Chooses and returns the best move that can be played in a given Game State.
-  def choose_best_move(game_state) do
+    Enum.find(valid_moves, fn move ->
+      case move do
+        {:move, from_col, to_col} ->
+          col_data = Board.get_col(game_state.board, 0, to_col)
+          opponent_colour = Player.get_opposite_colour(game_state.player)
+          Enum.count(col_data, &(&1 == opponent_colour)) == 1
+        _ ->
+          false
+      end
+    end)
+  end
+
+  # Finds a move that saves a vulnerable piece.
+  defp find_save_move(game_state) do
+    valid_moves = MoveGenerator.generate_moves(game_state)
+
+    Enum.find(valid_moves, fn move ->
+      case move do
+        {:move, from_col, to_col} ->
+          from_col_data = Board.get_col(game_state.board, 0, from_col)
+          piece_colour = Player.get_piece_colour(game_state.player)
+          Enum.count(from_col_data, &(&1 == piece_colour)) == 1
+        _ ->
+          false
+      end
+    end)
+  end
+
+  # Finds a move that bears off a piece.
+  defp find_bear_off_move(game_state) do
+    valid_moves = MoveGenerator.generate_moves(game_state)
+
+    Enum.find(valid_moves, fn move ->
+      case move do
+        {:bear_off, _col} -> true
+        _ -> false
+      end
+    end)
+  end
+
+  # Uses Alpha-Beta to find the best move.
+  defp find_best_move_with_alphabeta(game_state) do
     valid_moves = MoveGenerator.generate_moves(game_state)
 
     {best_move, _best_score} = Enum.reduce(valid_moves, {nil, @negative_infinity}, fn move, {best_move, best_score} ->
@@ -49,9 +108,7 @@ defmodule GameEngine do
   end
 
   # Uses the AlphaBeta algorithm to choose which path is best to take in a given game state.
-  # The other paths are pruned, meaning that the algorithm will not check them, seeing as their score
-  # is smaller than the others.
-  def alphabeta(game_state, depth, alpha, beta, maximizing_player) do
+  defp alphabeta(game_state, depth, alpha, beta, maximizing_player) do
     if depth == 0 or game_over?(game_state) do
       GameEngine.calculate_position_score(game_state.player, game_state.board)
     else
@@ -110,5 +167,4 @@ defmodule GameEngine do
   defp game_over?(game_state) do
     false  # Placeholder
   end
-
 end

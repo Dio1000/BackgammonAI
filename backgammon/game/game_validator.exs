@@ -1,3 +1,5 @@
+Code.require_file("backgammon/player/player.exs")
+
 defmodule GameValidator do
   # Finds the first empty space from the bottom of a column.
   def get_first_empty_from_bottom(_max_height, col_data) do

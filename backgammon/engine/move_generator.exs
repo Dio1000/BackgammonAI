@@ -1,9 +1,4 @@
-Code.require_file("backgammon/engine/game_state.exs")
-Code.require_file("backgammon/player/player.exs")
-Code.require_file("backgammon/game/game_validator.exs")
-
 defmodule MoveGenerator do
-
   defstruct board: nil, player: nil, opponent: nil, dice_roll: nil
 
   # Creates a new GameState struct.
@@ -44,7 +39,7 @@ defmodule MoveGenerator do
     Enum.flat_map(dice_roll, fn dice_number ->
       new_col = start_col + direction * dice_number
       if GameValidator.can_reenter?(board, piece_colour, new_col) do
-        [{dice_number, new_col}]
+        [{:reenter, dice_number, new_col}]
       else
         []
       end
@@ -61,7 +56,7 @@ defmodule MoveGenerator do
         Enum.flat_map(dice_roll, fn dice_number ->
           new_col = find_new_col(piece_colour, col, dice_number)
           if GameValidator.can_move?(board, piece_colour, col, new_col) do
-            [{col, new_col}]
+            [{:move, col, new_col}]
           else
             []
           end
@@ -82,7 +77,7 @@ defmodule MoveGenerator do
           col_data = Board.get_col(board, 0, col)
           if Enum.any?(col_data, &(&1 == piece_colour)) do
             if GameValidator.is_valid_bearing_off_move?(piece_colour, col, dice_number) do
-              [{0, col}]
+              [{:bear_off, col}]
             else
               []
             end

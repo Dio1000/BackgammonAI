@@ -1,5 +1,4 @@
 defmodule GameEngineUtils do
-
   # Computes a weighted score based on the number of pieces that are
   # in the homebase of a given player.
   def compute_homebase_score(player, board) do
@@ -72,5 +71,50 @@ defmodule GameEngineUtils do
     beared_off_pieces = Player.get_beared_pieces(player)
 
     -hit_pieces * 3 + beared_off_pieces * 10
+  end
+
+  # Computes the score for hitting an opponent's piece.
+  def compute_hit_score(player, board) do
+    piece_colour = Player.get_piece_colour(player)
+    opponent_colour = Player.get_opposite_colour(player)
+
+    hit_score = Enum.reduce(1..24, 0, fn col, acc ->
+      col_data = Board.get_col(board, 0, col)
+      if Enum.count(col_data, fn cell -> cell == opponent_colour end) == 1 do
+        acc + 1
+      else
+        acc
+      end
+    end)
+
+    hit_score * 20
+  end
+
+  # Computes the score for saving vulnerable pieces.
+  def compute_save_vulnerable_score(player, board) do
+    piece_colour = Player.get_piece_colour(player)
+
+    save_score = Enum.reduce(1..24, 0, fn col, acc ->
+      col_data = Board.get_col(board, 0, col)
+      if Enum.count(col_data, fn cell -> cell == piece_colour end) == 1 do
+        acc + 1
+      else
+        acc
+      end
+    end)
+
+    save_score * 15
+  end
+
+  # Computes the score for bearing off pieces.
+  def compute_bearing_off_score(player, board) do
+    piece_colour = Player.get_piece_colour(player)
+
+    if GameValidator.all_pieces_in_homebase?(board, piece_colour) do
+      beared_off_pieces = Player.get_beared_pieces(player)
+      beared_off_pieces * 10
+    else
+      0
+    end
   end
 end

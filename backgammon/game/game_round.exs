@@ -1,8 +1,10 @@
-Code.require_file("backgammon/domain/board.exs")
-Code.require_file("backgammon/domain/dice.exs")
-Code.require_file("backgammon/player/player.exs")
-Code.require_file("backgammon/utils/validator.exs")
 Code.require_file("backgammon/game/game_validator.exs")
+Code.require_file("backgammon/domain/board.exs")
+Code.require_file("backgammon/domain/board_utils.exs")
+Code.require_file("backgammon/engine/move_generator.exs")
+Code.require_file("backgammon/engine/engine.exs")
+Code.require_file("backgammon/player/player_builder.exs")
+Code.require_file("backgammon/utils/validator.exs")
 
 defmodule GameRound do
   # Starts a new round of Backgammon, initializes the board, and begins the game with the white pieces player.
@@ -15,7 +17,53 @@ defmodule GameRound do
   # against an AI that plays the best moves.
   def start_ai_round(player, opponent) do
     board = Board.create()
+    white_pieces_ai_move(player, opponent, board)
+  end
 
+  defp white_pieces_ai_move(player, opponent, board) do
+    Player.show_data(opponent)
+    Board.show(board)
+    Player.show_data(player)
+    IO.write("\n")
+
+    dice_rolled = dice_roll(player)
+    {new_board, updated_player} = player_move(player, dice_rolled, board)
+    {updated_player, updated_opponent} = update_hit_pieces(new_board, updated_player, opponent)
+
+    black_pieces_ai_move(updated_player, updated_opponent, new_board)
+  end
+
+  defp black_pieces_ai_move(player, opponent, board) do
+    Player.show_data(player)
+    Board.show(board)
+    Player.show_data(opponent)
+    IO.write("\n")
+
+    dice_rolled = dice_roll(opponent)
+
+    game_state = MoveGenerator.new(board, opponent, player, dice_rolled)
+
+    first_die = Enum.at(dice_rolled, 0)
+    first_die_state = %{game_state | dice_roll: [first_die]}
+    best_move_first_die = GameEngine.choose_best_move(first_die_state)
+
+    new_board_after_first_move = if best_move_first_die do
+      BoardUtils.apply_move(board, best_move_first_die)
+    else
+      board
+    end
+
+    second_die = Enum.at(dice_rolled, 1)
+    second_die_state = %{game_state | board: new_board_after_first_move, dice_roll: [second_die]}
+    best_move_second_die = GameEngine.choose_best_move(second_die_state)
+
+    IO.puts("AI's best move for dice 1 (#{first_die}): #{inspect(best_move_first_die)}")
+    IO.puts("AI's best move for dice 2 (#{second_die}): #{inspect(best_move_second_die)}")
+
+    {new_board, updated_player} = player_move(opponent, dice_rolled, board)
+    {updated_player, updated_opponent} = update_hit_pieces(new_board, updated_player, player)
+
+    white_pieces_ai_move(updated_opponent, updated_player, new_board)
   end
 
   # Handles the white pieces player's move, displays the board and player data,

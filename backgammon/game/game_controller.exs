@@ -29,8 +29,8 @@ defmodule GameController do
     filename = get_filename()
 
     player = PlayerBuilder.default_build_white(Player.get_player1(filename))
-    opponent = PlayerBuilder.default_build_black(Player.get_player2(filename))
-    GameRound.start_round(player, opponent)
+    opponent = PlayerBuilder.default_build_black("AI")
+    GameRound.start_ai_round(player, opponent)
 
     get_choice()
   end
