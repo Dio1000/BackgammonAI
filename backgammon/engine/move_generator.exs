@@ -49,13 +49,19 @@ defmodule MoveGenerator do
   # Generates regular moves for pieces on the board.
   defp generate_regular_moves(player, board, dice_roll) do
     piece_colour = Player.get_piece_colour(player)
+    invalid_col = case piece_colour do
+      "W" ->
+        0
+      "B" ->
+        25
+    end
 
     Enum.flat_map(1..24, fn col ->
       col_data = Board.get_col(board, 0, col)
       if Enum.any?(col_data, &(&1 == piece_colour)) do
         Enum.flat_map(dice_roll, fn dice_number ->
           new_col = find_new_col(piece_colour, col, dice_number)
-          if GameValidator.can_move?(board, piece_colour, col, new_col) do
+          if GameValidator.can_move?(board, piece_colour, col, new_col) and new_col != invalid_col do
             [{:move, col, new_col}]
           else
             []

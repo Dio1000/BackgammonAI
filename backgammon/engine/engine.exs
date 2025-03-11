@@ -5,7 +5,7 @@ Code.require_file("backgammon/engine/engine_utils.exs")
 Code.require_file("backgammon/engine/move_generator.exs")
 
 defmodule GameEngine do
-  @max_depth 3
+  @max_depth 5
   @positive_infinity 1_000_000
   @negative_infinity -1_000_000
 
@@ -165,6 +165,13 @@ defmodule GameEngine do
   end
 
   defp game_over?(game_state) do
-    false  # Placeholder
+    player = game_state.player
+    opponent = game_state.opponent
+
+    if player |> Player.get_beared_pieces == 15 or
+       opponent |> Player.get_beared_pieces == 15 do
+         true
+       end
+    false
   end
 end
